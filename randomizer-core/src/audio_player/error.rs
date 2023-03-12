@@ -1,5 +1,6 @@
-use anyhow::{bail, Result};
 use bass_sys::BASS_ErrorGetCode;
+
+use crate::{Error, Result};
 
 pub(crate) fn get_bass_error(message: &str) -> Result<()> {
     let error_code = BASS_ErrorGetCode();
@@ -49,5 +50,5 @@ pub(crate) fn get_bass_error(message: &str) -> Result<()> {
         _ => "Unknown",
     };
 
-    bail!("BASS error: {} ({})", message, error_text);
+    Err(Error::Bass(message, error_text.to_string()))
 }

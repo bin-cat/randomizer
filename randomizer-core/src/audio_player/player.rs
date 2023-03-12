@@ -6,7 +6,6 @@ use std::{
     ptr::null_mut,
 };
 
-use anyhow::{Context, Result};
 use bass_sys::{
     BASS_Free, BASS_GetDevice, BASS_GetDeviceInfo, BASS_Init, BASS_PluginFree, BASS_PluginLoad,
     BASS_SetConfig, BASS_SetDevice, BassDeviceInfo, BASS_CONFIG_GVOL_STREAM, BASS_CONFIG_UNICODE,
@@ -14,6 +13,8 @@ use bass_sys::{
 };
 use log::error;
 use walkdir::WalkDir;
+
+use crate::Result;
 
 use super::{error::get_bass_error, BassStream};
 
@@ -45,7 +46,7 @@ impl Player {
 
             let c_str: &CStr = unsafe { CStr::from_ptr(device_info.driver.cast()) };
             if c_str.to_str()? == name {
-                return Ok(i as u32);
+                return Ok(i);
             }
 
             i += 1;
@@ -165,12 +166,7 @@ impl Player {
                     .map_or(false, |ext| ext == DLL_EXTENSION)
             })
         {
-            let c_path = CString::new(
-                file_path
-                    .path()
-                    .to_str()
-                    .context("Failed to convert path to string")?,
-            )?;
+            let c_path = CString::new(file_path.path().to_string_lossy().as_ref())?;
             let handle = BASS_PluginLoad(c_path.as_ptr().cast::<c_void>(), 0);
             if handle == 0 {
                 get_bass_error("Failed to load BASS plugin")?;

@@ -3,67 +3,29 @@
     windows_subsystem = "windows"
 )]
 
-mod audio_player;
 mod commands;
-mod config;
-mod constants;
 mod error;
-mod func;
 
-use std::{
-    error::Error,
-    fs::{create_dir_all, read},
-};
+use std::{error::Error, fs::read};
 
-use anyhow::bail;
-use log::{error, LevelFilter};
-use log4rs::{
-    append::file::FileAppender,
-    config::{Appender, Root},
-    encode::pattern::PatternEncoder,
-};
+use log::error;
 use tauri::{
     http::{Request, Response, ResponseBuilder},
     AppHandle, Manager, RunEvent,
 };
 use tokio::sync::RwLock;
 
-use crate::{
-    audio_player::Player,
-    commands::{get_audio_devices, get_config, lists, random_bg, roll, set_config, stop},
-    config::Config,
-    constants::{APP_PATH, CONFIG_PATH, DATA_PATH, ROLL_SOUNDS, STOP_SOUNDS},
-    func::load_sound_lists,
-};
+use randomizer_core::{data_path, Randomizer};
 
-const LOG_FILE_NAME: &'static str = "randomizer.log";
-const PLUGINS_DIR: &'static str = "plugins";
+use crate::commands::{get_audio_devices, get_config, lists, random_bg, roll, set_config, stop};
 
 pub struct AppState {
-    pub config: RwLock<Config>,
-    pub stop_roll: RwLock<bool>,
+    pub randomizer: RwLock<Randomizer>,
 }
 
 fn main() -> anyhow::Result<()> {
-    create_dir_all(CONFIG_PATH.as_path())?;
-
-    init_log()?;
-
-    let config = Config::load();
-    let mut plugins_dir = APP_PATH.clone();
-    plugins_dir.push(PLUGINS_DIR);
-    Player::init(plugins_dir, config.audio_device().as_str(), config.volume()).unwrap();
-
-    if ROLL_SOUNDS.set(load_sound_lists("roll")).is_err() {
-        bail!("Failed to load roll sounds");
-    }
-    if STOP_SOUNDS.set(load_sound_lists("stop")).is_err() {
-        bail!("Failed to load stop sounds");
-    }
-
     let state = AppState {
-        config: RwLock::new(config),
-        stop_roll: RwLock::new(false),
+        randomizer: RwLock::new(Randomizer::new()?),
     };
 
     tauri::Builder::default()
@@ -96,7 +58,7 @@ fn data_protocol_handler(
     let response = ResponseBuilder::new();
     match request.uri().strip_prefix("data://localhost/") {
         Some(path) => {
-            let mut file_path = DATA_PATH.clone();
+            let mut file_path = data_path();
             file_path.push(
                 percent_encoding::percent_decode(path.as_bytes())
                     .decode_utf8_lossy()
@@ -116,37 +78,11 @@ fn data_protocol_handler(
     }
 }
 
-fn init_log() -> anyhow::Result<()> {
-    log_panics::init();
-
-    let mut file_path = CONFIG_PATH.clone();
-    file_path.push(LOG_FILE_NAME);
-
-    let log_file = FileAppender::builder()
-        .append(false)
-        .encoder(Box::new(PatternEncoder::new(
-            "{d(%Y-%m-%d %H:%M:%S)} [{l}] {m}{n}",
-        )))
-        .build(file_path)?;
-
-    let config = log4rs::Config::builder()
-        .appender(Appender::builder().build("log_file", Box::new(log_file)))
-        .build(
-            Root::builder()
-                .appender("log_file")
-                .build(LevelFilter::Info),
-        )?;
-
-    log4rs::init_config(config)?;
-
-    Ok(())
-}
-
 fn run_event_handler(app_handle: &AppHandle, event: RunEvent) {
     if let tauri::RunEvent::Ready = event {
         let state = app_handle.state::<AppState>();
 
-        if state.config.blocking_read().start_fullscreen() {
+        if state.randomizer.blocking_read().config().start_fullscreen() {
             if let Some(window) = app_handle.get_window("main") {
                 if let Err(e) = window.set_fullscreen(true) {
                     error!("Failed to enable full screen mode: {:#?}", e);

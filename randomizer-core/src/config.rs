@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
 use getset::{CopyGetters, Getters};
 use log::error;
 use rand::{
@@ -13,7 +12,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::constants::CONFIG_PATH;
+use crate::{constants::CONFIG_PATH, Result};
 
 #[derive(Clone, CopyGetters, Deserialize, Getters, Serialize)]
 #[serde(rename_all = "camelCase")]

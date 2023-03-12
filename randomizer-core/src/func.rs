@@ -8,7 +8,7 @@ use std::{
 use once_cell::sync::Lazy;
 use walkdir::{DirEntry, WalkDir};
 
-use crate::DATA_PATH;
+use crate::constants::DATA_PATH;
 
 static SOUND_EXTENSIONS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     HashSet::from([
@@ -94,12 +94,12 @@ fn load_tracks(base_dir: &PathBuf) -> Vec<PathBuf> {
     .collect();
 
     let mut playlist_path = base_dir.clone();
-    playlist_path.push(format!("!playlist.m3u8"));
+    playlist_path.push("!playlist.m3u8");
     if playlist_path.is_file() {
         result.extend(
             lines_from_file(playlist_path)
                 .iter()
-                .map(|x| PathBuf::from(x))
+                .map(PathBuf::from)
                 .filter(|x| x.is_file()),
         );
     }

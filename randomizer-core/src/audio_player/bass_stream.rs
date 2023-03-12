@@ -1,12 +1,13 @@
 use std::ffi::c_void;
 
-use anyhow::Result;
 use bass_sys::{
     BASS_ChannelPlay, BASS_ChannelSetSync, BASS_ChannelSlideAttribute, BASS_StreamCreateFile,
     BASS_StreamFree, BASS_ATTRIB_VOL, BASS_SAMPLE_LOOP, BASS_UNICODE, HSTREAM, SYNCPROC,
 };
 use log::error;
 use widestring::U16CString;
+
+use crate::Result;
 
 use super::error::get_bass_error;
 
